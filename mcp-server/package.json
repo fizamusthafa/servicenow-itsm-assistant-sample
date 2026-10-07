@@ -1,0 +1,21 @@
+{
+  "name": "servicenow-mcp-server",
+  "version": "2.0.0",
+  "description": "ServiceNow ITSM MCP server for Copilot Studio (GitHub Copilot harness) and Copilot Cowork",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "cheerio": "^1.1.2",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.7.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

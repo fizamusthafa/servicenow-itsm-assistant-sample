@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+name: servicenow-itsm-mcp
+services:
+  mcp:
+    project: ./mcp-server
+    language: js
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      remoteBuild: true
+infra:
+  provider: bicep
+  path: infra

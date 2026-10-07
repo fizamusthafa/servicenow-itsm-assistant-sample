@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ServiceNow Incidents</title>
+<style>
+  :root {
+    /* Host theme variables with ServiceNow-flavored fallbacks */
+    --bg: var(--color-background-primary, #f5f6f7);
+    --surface: var(--color-background-secondary, #ffffff);
+    --surface-2: var(--color-background-tertiary, #eef0f1);
+    --text: var(--color-text-primary, #1c2b33);
+    --text-2: var(--color-text-secondary, #5a6c75);
+    --border: var(--color-border-primary, #d4dade);
+    --radius: var(--border-radius-md, 10px);
+    --radius-sm: var(--border-radius-sm, 6px);
+    --font: var(--font-sans, "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif);
+    --mono: var(--font-mono, "Cascadia Code", ui-monospace, Menlo, Consolas, monospace);
+
+    /* ServiceNow brand */
+    --sn-green: #62d84e;
+    --sn-green-deep: #2e8540;
+    --sn-slate: #1c2b33;
+    --sn-slate-2: #25363f;
+
+    /* Priority palette */
+    --p1: #c4314b;
+    --p2: #de7100;
+    --p3: #d9a000;
+    --p4: #1573b3;
+    --p5: #7a8b94;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; width: 100%; }
+  body {
+    font-family: var(--font);
+    color: var(--text);
+    background: var(--bg);
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* ── Header ─────────────────────────────────────────── */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: linear-gradient(120deg, var(--sn-slate) 0%, var(--sn-slate-2) 100%);
+    color: #fff;
+  }
+  .logo {
+    display: inline-flex;
+    align-items: baseline;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: -0.3px;
+    line-height: 1;
+  }
+  .logo .now {
+    color: #fff;
+  }
+  .logo .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--sn-green);
+    margin-left: 3px;
+    align-self: flex-end;
+    margin-bottom: 2px;
+  }
+  .header .title {
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0.85;
+    padding-left: 12px;
+    margin-left: 4px;
+    border-left: 1px solid rgba(255,255,255,0.2);
+  }
+  .header .spacer { flex: 1; }
+  .btn {
+    appearance: none;
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.12s ease;
+  }
+  .btn:hover { background: rgba(255,255,255,0.18); }
+  .btn:active { transform: translateY(0.5px); }
+  .btn svg { width: 13px; height: 13px; }
+  .btn.spin svg { animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Stats ──────────────────────────────────────────── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    padding: 14px 16px 4px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+  }
+  .stat .num { font-size: 24px; font-weight: 700; line-height: 1.1; }
+  .stat .lbl { font-size: 11px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+  .stat.crit .num { color: var(--p1); }
+  .stat.open .num { color: var(--p2); }
+  .stat.done .num { color: var(--sn-green-deep); }
+
+  /* ── Filters ────────────────────────────────────────── */
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 16px 6px;
+  }
+  .chip {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+  .chip:hover { border-color: var(--sn-green-deep); color: var(--text); }
+  .chip[aria-pressed="true"] {
+    background: var(--sn-slate);
+    color: #fff;
+    border-color: var(--sn-slate);
+  }
+
+  /* ── List ───────────────────────────────────────────── */
+  .list { padding: 6px 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .row {
+    display: grid;
+    grid-template-columns: 4px auto 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0;
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  }
+  .row:hover {
+    border-color: var(--sn-green-deep);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+  }
+  .row .bar { width: 4px; align-self: stretch; }
+  .row .meta { padding: 11px 0; }
+  .row .num {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .row .pri-label { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+  .row .desc {
+    padding: 11px 0;
+    min-width: 0;
+  }
+  .row .desc .d1 {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .row .desc .d2 { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+
+  .pill {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .pill.new { background: #e7f0ff; color: #1573b3; }
+  .pill.progress { background: #fff1dd; color: #b35a00; }
+  .pill.hold { background: #f1edff; color: #6b4ea8; }
+  .pill.resolved { background: #e4f7e4; color: var(--sn-green-deep); }
+  .pill.closed { background: var(--surface-2); color: var(--text-2); }
+
+  .assignee {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-right: 14px;
+    white-space: nowrap;
+  }
+  .avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--sn-slate);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .assignee .name { font-size: 12px; color: var(--text-2); }
+  .assignee.none .avatar { background: var(--surface-2); color: var(--text-2); }
+
+  /* ── Detail panel ───────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  }
+  .card:hover { border-color: var(--sn-green-deep); box-shadow: 0 1px 6px rgba(0,0,0,0.08); }
+  .card.open { border-color: var(--sn-green-deep); box-shadow: 0 2px 10px rgba(0,0,0,0.10); }
+  .card .row { border: 0; border-radius: 0; box-shadow: none; }
+  .card .row:hover { border: 0; box-shadow: none; }
+  .card .chev {
+    transition: transform 0.15s ease;
+    color: var(--text-2);
+    width: 16px; height: 16px;
+    margin-right: 14px;
+    flex-shrink: 0;
+  }
+  .card.open .chev { transform: rotate(90deg); }
+
+  .detail {
+    display: none;
+    border-top: 1px solid var(--border);
+    background: var(--surface-2);
+    padding: 14px 16px;
+  }
+  .card.open .detail { display: block; }
+  .detail .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px 18px;
+    margin-bottom: 10px;
+  }
+  .detail .f .k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-2); }
+  .detail .f .v { font-size: 13px; font-weight: 600; margin-top: 1px; }
+  .detail .desc-block { margin-top: 4px; }
+  .detail .desc-block .k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-2); margin-bottom: 3px; }
+  .detail .desc-block .body {
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    white-space: pre-wrap;
+    color: var(--text);
+  }
+  .detail .det-actions { margin-top: 12px; display: flex; gap: 8px; }
+  .detail .det-actions .btn { color: var(--text); border-color: var(--border); background: var(--surface); }
+  .detail .det-actions .btn:hover { background: var(--surface-2); }
+  .detail .det-actions .btn.primary { background: var(--sn-slate); color: #fff; border-color: var(--sn-slate); }
+  .detail .det-actions .btn.primary:hover { background: var(--sn-slate-2); }
+  .detail .loading-mini { font-size: 12px; color: var(--text-2); }
+
+  /* ── States ─────────────────────────────────────────── */
+  .empty, .loading {
+    padding: 40px 16px;
+    text-align: center;
+    color: var(--text-2);
+  }
+  .empty svg { width: 40px; height: 40px; opacity: 0.4; margin-bottom: 8px; }
+  .skel {
+    height: 56px;
+    border-radius: var(--radius);
+    background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface) 50%, var(--surface-2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.2s infinite;
+    margin: 0 16px 8px;
+  }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  .footer {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .footer a { color: var(--sn-green-deep); text-decoration: none; }
+  @media (max-width: 520px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .assignee .name { display: none; }
+    .row { grid-template-columns: 4px auto 1fr auto; }
+    .row .assignee { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <span class="logo"><span class="now">now</span><span class="dot"></span></span>
+    <span class="title">Incident Management</span>
+    <span class="spacer"></span>
+    <button class="btn" id="autoassign" title="Auto-assign all unassigned incidents to the right IT group">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 1.5 14 4v4c0 3.5-2.4 5.8-6 6.5C4.4 13.8 2 11.5 2 8V4l6-2.5z"/><path d="M5.5 8l1.8 1.8L10.8 6"/>
+      </svg>
+      Auto-assign
+    </button>
+    <button class="btn" id="refresh" title="Refresh">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 2v3.5H10"/>
+      </svg>
+      Refresh
+    </button>
+  </div>
+
+  <div class="stats" id="stats">
+    <div class="stat"><div class="num" id="s-total">–</div><div class="lbl">Total</div></div>
+    <div class="stat crit"><div class="num" id="s-crit">–</div><div class="lbl">Critical (P1)</div></div>
+    <div class="stat open"><div class="num" id="s-open">–</div><div class="lbl">Open</div></div>
+    <div class="stat done"><div class="num" id="s-done">–</div><div class="lbl">Resolved</div></div>
+  </div>
+
+  <div class="filters" id="filters">
+    <button class="chip" data-filter="all" aria-pressed="true">All</button>
+    <button class="chip" data-filter="critical">Critical</button>
+    <button class="chip" data-filter="open">Open</button>
+    <button class="chip" data-filter="resolved">Resolved</button>
+  </div>
+
+  <div id="body">
+    <div class="loading">
+      <div class="skel"></div><div class="skel"></div><div class="skel"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span id="instance">ServiceNow</span>
+    <span id="count"></span>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ── Minimal JSON-RPC over postMessage (SEP-1865) ────────────────
+  var rpcId = 1;
+  var pending = {};
+
+  function post(msg) {
+    try { window.parent.postMessage(msg, "*"); } catch (e) {}
+  }
+  function request(method, params) {
+    var id = rpcId++;
+    post({ jsonrpc: "2.0", id: id, method: method, params: params || {} });
+    return new Promise(function (resolve, reject) {
+      pending[id] = { resolve: resolve, reject: reject };
+    });
+  }
+  function notify(method, params) {
+    post({ jsonrpc: "2.0", method: method, params: params || {} });
+  }
+
+  window.addEventListener("message", function (event) {
+    var data = event.data;
+    if (!data || data.jsonrpc !== "2.0") return;
+
+    // Response to one of our requests
+    if (data.id != null && pending[data.id]) {
+      var p = pending[data.id];
+      delete pending[data.id];
+      if (data.error) p.reject(data.error);
+      else p.resolve(data.result);
+      return;
+    }
+
+    // Notifications from host
+    switch (data.method) {
+      case "ui/notifications/tool-result":
+        onToolResult(data.params);
+        break;
+      case "ui/notifications/tool-input":
+        // initial filter args, if any
+        if (data.params && data.params.arguments) {
+          applyIncomingFilter(data.params.arguments);
+        }
+        break;
+      case "ui/notifications/host-context-changed":
+        if (data.params) applyHostContext(data.params);
+        break;
+    }
+  });
+
+  // ── Theming ────────────────────────────────────────────────────
+  function applyHostContext(ctx) {
+    if (!ctx) return;
+    if (ctx.styles && ctx.styles.variables) {
+      var vars = ctx.styles.variables;
+      Object.keys(vars).forEach(function (k) {
+        if (vars[k] != null) document.documentElement.style.setProperty(k, vars[k]);
+      });
+    }
+    if (ctx.theme) {
+      document.documentElement.style.colorScheme = ctx.theme;
+    }
+  }
+
+  // ── Auto-resize ────────────────────────────────────────────────
+  // Report HEIGHT ONLY. The host controls width (containerDimensions); echoing
+  // our width back creates a shrink feedback loop (host narrows iframe → content
+  // reflows → smaller scrollWidth → narrower again). Guard so we only notify on
+  // an actual height change to avoid ResizeObserver loops.
+  var lastReportedH = -1;
+  function reportSize() {
+    var h = document.documentElement.scrollHeight;
+    if (h === lastReportedH) return;
+    lastReportedH = h;
+    notify("ui/notifications/size-changed", { height: h });
+  }
+  if (window.ResizeObserver) {
+    var ro = new ResizeObserver(function () {
+      // defer to next frame so layout settles, breaking synchronous loops
+      if (window.requestAnimationFrame) requestAnimationFrame(reportSize);
+      else reportSize();
+    });
+    ro.observe(document.body);
+  }
+
+  // ── Rendering ──────────────────────────────────────────────────
+  var allIncidents = [];
+  var currentFilter = "all";
+  var instanceUrl = "";
+
+  function priClass(p) {
+    var n = String(p || "").trim().charAt(0);
+    return ({ "1": "p1", "2": "p2", "3": "p3", "4": "p4", "5": "p5" })[n] || "p5";
+  }
+  function priColor(p) {
+    return "var(--" + priClass(p) + ")";
+  }
+  // Mirror of the server's category → IT group routing (for suggestion labels).
+  var ROUTING = {
+    "network": "Network",
+    "hardware": "Hardware",
+    "software": "Software",
+    "database": "Database",
+    "inquiry / help": "Service Desk",
+    "inquiry": "Service Desk"
+  };
+  function suggestedGroup(category) {
+    var key = String(category || "").trim().toLowerCase();
+    return ROUTING[key] || "Service Desk";
+  }
+  function priLabel(p) {
+    var n = String(p || "").trim().charAt(0);
+    return ({ "1": "Critical", "2": "High", "3": "Moderate", "4": "Low", "5": "Planning" })[n] || (p || "—");
+  }
+  function stateClass(s) {
+    var t = String(s || "").toLowerCase();
+    if (t.indexOf("progress") >= 0) return "progress";
+    if (t.indexOf("hold") >= 0) return "hold";
+    if (t.indexOf("resolv") >= 0) return "resolved";
+    if (t.indexOf("clos") >= 0) return "closed";
+    return "new";
+  }
+  function isOpen(s) {
+    var c = stateClass(s);
+    return c !== "resolved" && c !== "closed";
+  }
+  function initials(name) {
+    if (!name) return "—";
+    var parts = String(name).trim().split(/\s+/);
+    return ((parts[0] || "")[0] || "" ) + ((parts[1] || "")[0] || "");
+  }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c];
+    });
+  }
+  function val(field) {
+    // ServiceNow fields may be {display_value, value} or a plain string
+    if (field && typeof field === "object") return field.display_value || field.value || "";
+    return field || "";
+  }
+
+  function matchesFilter(inc) {
+    if (currentFilter === "all") return true;
+    if (currentFilter === "critical") return priClass(val(inc.priority)) === "p1";
+    if (currentFilter === "open") return isOpen(val(inc.state));
+    if (currentFilter === "resolved") return !isOpen(val(inc.state));
+    return true;
+  }
+
+  function renderStats(list) {
+    var crit = 0, open = 0, done = 0;
+    list.forEach(function (i) {
+      if (priClass(val(i.priority)) === "p1") crit++;
+      if (isOpen(val(i.state))) open++; else done++;
+    });
+    document.getElementById("s-total").textContent = list.length;
+    document.getElementById("s-crit").textContent = crit;
+    document.getElementById("s-open").textContent = open;
+    document.getElementById("s-done").textContent = done;
+  }
+
+  function render() {
+    var body = document.getElementById("body");
+    var list = allIncidents.filter(matchesFilter);
+    document.getElementById("count").textContent =
+      list.length + " of " + allIncidents.length + " incidents";
+
+    if (allIncidents.length === 0) {
+      body.innerHTML =
+        '<div class="empty">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>' +
+        '<div>No incidents to show.</div></div>';
+      reportSize();
+      return;
+    }
+
+    var html = '<div class="list">';
+    list.forEach(function (inc) {
+      var num = val(inc.number);
+      var pri = val(inc.priority);
+      var state = val(inc.state);
+      var assignee = val(inc.assigned_to);
+      var group = val(inc.assignment_group);
+      var desc = val(inc.short_description);
+
+      html +=
+        '<div class="card" data-number="' + esc(num) + '">' +
+          '<div class="row">' +
+            '<div class="bar" style="background:' + priColor(pri) + '"></div>' +
+            '<div class="meta">' +
+              '<div class="num">' + esc(num) + '</div>' +
+              '<div class="pri-label">P' + esc(String(pri).trim().charAt(0) || "?") + ' · ' + esc(priLabel(pri)) + '</div>' +
+            '</div>' +
+            '<div class="desc">' +
+              '<div class="d1">' + esc(desc || "(no description)") + '</div>' +
+              '<div class="d2">' + esc(group || val(inc.category) || "Service Desk") + '</div>' +
+            '</div>' +
+            '<span class="pill ' + stateClass(state) + '">' + esc(state || "New") + '</span>' +
+            '<div class="assignee' + (assignee ? "" : " none") + '">' +
+              '<span class="avatar">' + esc(initials(assignee).toUpperCase() || "—") + '</span>' +
+              '<span class="name">' + esc(assignee || "Unassigned") + '</span>' +
+            '</div>' +
+            '<svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>' +
+          '</div>' +
+          '<div class="detail"></div>' +
+        '</div>';
+    });
+    html += '</div>';
+    body.innerHTML = html;
+
+    Array.prototype.forEach.call(body.querySelectorAll(".card"), function (card) {
+      var rowEl = card.querySelector(".row");
+      rowEl.addEventListener("click", function () {
+        toggleCard(card);
+      });
+    });
+
+    renderStats(allIncidents);
+    reportSize();
+  }
+
+  // ── Inline detail panel ────────────────────────────────────────
+  function findIncident(num) {
+    for (var i = 0; i < allIncidents.length; i++) {
+      if (val(allIncidents[i].number) === num) return allIncidents[i];
+    }
+    return null;
+  }
+
+  function field(k, v) {
+    return '<div class="f"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v || "—") + '</div></div>';
+  }
+
+  function renderDetail(panel, inc) {
+    var num = val(inc.number);
+    var grid =
+      field("Priority", "P" + String(val(inc.priority)).trim().charAt(0) + " · " + priLabel(val(inc.priority))) +
+      field("State", val(inc.state)) +
+      field("Category", val(inc.category)) +
+      field("Assignment group", val(inc.assignment_group)) +
+      field("Assigned to", val(inc.assigned_to) || "Unassigned") +
+      field("Opened", val(inc.opened_at)) +
+      (inc.caller_id != null ? field("Caller", val(inc.caller_id)) : "") +
+      (inc.contact_type != null ? field("Channel", val(inc.contact_type)) : "");
+
+    var descText = val(inc.description) || val(inc.short_description) || "";
+    var loadingNote = inc.__enriched ? "" : '<div class="loading-mini">Loading full details…</div>';
+
+    var curGroup = val(inc.assignment_group);
+    var sugg = suggestedGroup(val(inc.category));
+    var needsRoute = !curGroup || curGroup.toLowerCase() !== sugg.toLowerCase();
+    var assignLabel = curGroup
+      ? (needsRoute ? "Re-route to " + sugg : "Routed to " + sugg)
+      : "Auto-assign to " + sugg;
+
+    panel.innerHTML =
+      '<div class="grid">' + grid + '</div>' +
+      '<div class="desc-block"><div class="k">Description</div><div class="body">' + esc(descText) + '</div></div>' +
+      loadingNote +
+      '<div class="det-actions">' +
+        '<button class="btn assign' + (needsRoute ? " primary" : "") + '" data-act="assign"' + (needsRoute ? "" : " disabled") + '>' +
+          '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;margin-right:5px;vertical-align:-2px"><path d="M8 1.5 14 4v4c0 3.5-2.4 5.8-6 6.5C4.4 13.8 2 11.5 2 8V4l6-2.5z"/><path d="M5.5 8l1.8 1.8L10.8 6"/></svg>' +
+          esc(assignLabel) +
+        '</button>' +
+        '<button class="btn" data-act="discuss">Discuss in chat</button>' +
+        '<a class="btn" data-act="open" target="_blank" rel="noopener">Open in ServiceNow</a>' +
+      '</div>';
+
+    var assignBtn = panel.querySelector('[data-act="assign"]');
+    if (assignBtn && needsRoute) {
+      assignBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        doAssign(inc, panel, assignBtn, null);
+      });
+    }
+
+    var openLink = panel.querySelector('[data-act="open"]');
+    if (openLink && instanceUrl && val(inc.sys_id)) {
+      openLink.href = instanceUrl + "/nav_to.do?uri=incident.do?sys_id=" + encodeURIComponent(val(inc.sys_id));
+    } else if (openLink) {
+      openLink.style.display = "none";
+    }
+    var discussBtn = panel.querySelector('[data-act="discuss"]');
+    if (discussBtn) {
+      discussBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        notify("ui/message", {
+          role: "user",
+          content: { type: "text", text: "Tell me more about incident " + num + " (" + val(inc.short_description) + ") and suggest next steps." }
+        });
+      });
+    }
+  }
+
+  function toggleCard(card) {
+    var num = card.getAttribute("data-number");
+    var panel = card.querySelector(".detail");
+    var isOpening = !card.classList.contains("open");
+
+    // accordion: close others
+    Array.prototype.forEach.call(document.querySelectorAll(".card.open"), function (c) {
+      if (c !== card) c.classList.remove("open");
+    });
+
+    card.classList.toggle("open", isOpening);
+    if (!isOpening) { reportSize(); return; }
+
+    var inc = findIncident(num);
+    if (!inc) { reportSize(); return; }
+    renderDetail(panel, inc);
+    reportSize();
+
+    // Enrich with full fields (description, caller, etc.) via app tools/call.
+    if (!inc.__enriched) {
+      request("tools/call", { name: "get_incident", arguments: { number: num } })
+        .then(function (res) {
+          var full = parseIncidentResult(res);
+          if (full) {
+            // merge enriched fields into the loaded record
+            Object.keys(full).forEach(function (k) { inc[k] = full[k]; });
+            inc.__enriched = true;
+            if (card.classList.contains("open")) { renderDetail(panel, inc); reportSize(); }
+          }
+        })
+        .catch(function () {
+          inc.__enriched = true;
+          var note = panel.querySelector(".loading-mini");
+          if (note) note.remove();
+        });
+    }
+  }
+
+  function parseIncidentResult(res) {
+    if (!res) return null;
+    if (res.structuredContent && res.structuredContent.number) return res.structuredContent;
+    // get_incident returns JSON text in content[0].text
+    try {
+      var c = res.content && res.content[0] && res.content[0].text;
+      if (c) {
+        var obj = JSON.parse(c);
+        if (obj && !obj.error) return obj;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  // ── Assignment routing ─────────────────────────────────────────
+  function parseAssignResult(res) {
+    if (!res) return null;
+    if (res.structuredContent && res.structuredContent.assignment_group) return res.structuredContent;
+    try {
+      var c = res.content && res.content[0] && res.content[0].text;
+      if (c) {
+        var o = JSON.parse(c);
+        if (o && !o.error) return o;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function doAssign(inc, panel, btn, group) {
+    var num = val(inc.number);
+    if (btn) { btn.disabled = true; btn.textContent = "Assigning…"; }
+    var args = { number: num };
+    if (group) args.group = group;
+    return request("tools/call", { name: "assign_incident", arguments: args })
+      .then(function (res) {
+        var r = parseAssignResult(res);
+        var applied = (r && r.assignment_group) || group || suggestedGroup(val(inc.category));
+        inc.assignment_group = applied;
+        if (panel) {
+          var card = panel.parentElement;
+          var d2 = card.querySelector(".row .desc .d2");
+          if (d2) d2.textContent = applied;
+          renderDetail(panel, inc);
+          reportSize();
+        }
+        return applied;
+      })
+      .catch(function () {
+        if (btn) { btn.disabled = false; btn.textContent = "Auto-assign"; }
+      });
+  }
+
+  function autoAssignAll() {
+    var btn = document.getElementById("autoassign");
+    var pending = allIncidents.filter(function (i) { return !val(i.assignment_group); });
+    if (pending.length === 0) {
+      flashBtn(btn, "Nothing to route");
+      return;
+    }
+    btn.classList.add("spin");
+    btn.disabled = true;
+    var done = 0;
+    function next(i) {
+      if (i >= pending.length) {
+        btn.classList.remove("spin");
+        btn.disabled = false;
+        render(); // re-render rows with new group + refresh detail state
+        flashBtn(btn, "Routed " + done);
+        return;
+      }
+      doAssign(pending[i], null, null, null)
+        .then(function () { done++; })
+        .catch(function () {})
+        .then(function () { next(i + 1); });
+    }
+    next(0);
+  }
+
+  function flashBtn(btn, msg) {
+    if (!btn) return;
+    var label = btn.querySelector("svg") ? btn.childNodes[btn.childNodes.length - 1] : null;
+    var prev = btn.textContent;
+    // keep icon: only replace trailing text node when present
+    var textNode = null;
+    for (var i = 0; i < btn.childNodes.length; i++) {
+      if (btn.childNodes[i].nodeType === 3 && btn.childNodes[i].textContent.trim()) textNode = btn.childNodes[i];
+    }
+    if (textNode) {
+      var orig = textNode.textContent;
+      textNode.textContent = " " + msg;
+      setTimeout(function () { textNode.textContent = orig; }, 1800);
+    }
+  }
+
+  // ── Data loading ───────────────────────────────────────────────
+  function onToolResult(result) {
+    if (!result) return;
+    var sc = result.structuredContent;
+    var incidents = (sc && sc.incidents) || [];
+    if (sc && sc.instance) {
+      instanceUrl = sc.instance;
+      var el = document.getElementById("instance");
+      el.innerHTML = '<a href="' + esc(sc.instance) + '" target="_blank" rel="noopener">' + esc(sc.instanceLabel || sc.instance) + '</a>';
+    }
+    allIncidents = Array.isArray(incidents) ? incidents : [];
+    setRefreshing(false);
+    render();
+  }
+
+  function setRefreshing(on) {
+    var btn = document.getElementById("refresh");
+    if (on) btn.classList.add("spin"); else btn.classList.remove("spin");
+  }
+
+  function reload(args) {
+    setRefreshing(true);
+    request("tools/call", { name: "show_incident_dashboard", arguments: args || {} })
+      .then(function (result) { onToolResult(result); })
+      .catch(function () { setRefreshing(false); });
+  }
+
+  function filterToArgs(f) {
+    if (f === "critical") return { priority: "1" };
+    if (f === "open") return { state: "2" };
+    if (f === "resolved") return { state: "6" };
+    return {};
+  }
+
+  function applyIncomingFilter(args) {
+    if (!args) return;
+    if (args.priority === "1") setActiveChip("critical");
+    else if (args.state === "6" || args.state === "7") setActiveChip("resolved");
+  }
+
+  function setActiveChip(f) {
+    currentFilter = f;
+    Array.prototype.forEach.call(document.querySelectorAll(".chip"), function (c) {
+      c.setAttribute("aria-pressed", c.getAttribute("data-filter") === f ? "true" : "false");
+    });
+  }
+
+  // ── Wire up UI ─────────────────────────────────────────────────
+  document.getElementById("refresh").addEventListener("click", function () {
+    reload(filterToArgs(currentFilter));
+  });
+  document.getElementById("autoassign").addEventListener("click", function () {
+    autoAssignAll();
+  });
+  Array.prototype.forEach.call(document.querySelectorAll(".chip"), function (chip) {
+    chip.addEventListener("click", function () {
+      var f = chip.getAttribute("data-filter");
+      setActiveChip(f);
+      // Filter locally for instant feedback; data is already loaded.
+      render();
+    });
+  });
+
+  // ── Lifecycle handshake ────────────────────────────────────────
+  request("ui/initialize", {
+    protocolVersion: "2026-01-26",
+    clientInfo: { name: "servicenow-incident-dashboard", version: "1.0.0" },
+    capabilities: {},
+    appCapabilities: {
+      availableDisplayModes: ["inline", "fullscreen"]
+    }
+  }).then(function (initResult) {
+    if (initResult && initResult.hostContext) applyHostContext(initResult.hostContext);
+  }).catch(function () {}).then(function () {
+    notify("ui/notifications/initialized", {});
+    reportSize();
+  });
+})();
+</script>
+</body>
+</html>
