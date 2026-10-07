@@ -4,6 +4,8 @@ This source sample lets a customer build their own Copilot Studio ITSM Assistant
 
 Knowledge answers return article text and source links. Screenshot search, inline article images, and the archived Teams audio demo are excluded.
 
+Download the [sample ZIP](https://github.com/fizamusthafa/servicenow-itsm-assistant-sample/releases/download/v0.1.0/servicenow-itsm-assistant-sample.zip) or clone the repository below.
+
 ## 1. Check prerequisites
 
 - Node.js 20+, Git, [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), and [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd).
@@ -130,12 +132,7 @@ Customers in another tenant should follow these steps in their own tenant. Shari
 
 Use `azd deploy` for server updates. Use `azd down` to remove sample Azure resources when finished; review the deletion prompt. Keep `.azure` state private.
 
-## Before sharing beyond a demo
-
-Run `npm ci` and `npm test` in `mcp-server`, then validate the skills. With two distinct, limited-role ServiceNow users, verify profile isolation, ACL-denied reads and writes, reconnection after token revocation, and explicit confirmation before a synthetic write. Confirm no write occurs when approval is declined.
-
-This sample has local automated coverage. Cross-tenant installation and the full live restricted-role, revocation, and write acceptance suite have not been certified. Instructions are model-driven safeguards, not a server-enforced approval gate. Review table access, OAuth scopes, audit trails, and data handling before production use.
-
-No deployment state, tenant-bound agent export, live OAuth connections, credentials, or demo captures are included. Use fresh secrets and rotate any exposed credentials. Review costs, networking, audit logs, data retention, and model behavior before production. CMDB status is recorded evidence, not a live health check.
+## Sample limitations
+This is a reference sample, not a production-certified solution. Validate permissions, user isolation, and write confirmations in your environment before production use. Write confirmation is instruction-driven, not enforced by the MCP server.
 
 See [detailed setup notes](copilot-studio/README.md) and the [MIT license](LICENSE).
